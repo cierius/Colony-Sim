@@ -1228,14 +1228,13 @@ function tickColonists(){
 function tickBuildQueue(){
   if(!state.buildQueue.length)return;
   const builders=state.colonists.filter(c=>c.role==='Builder'&&!c.sick&&!c.lostSeason).length;
-  if(builders===0)return; // no builders = no progress
   const active=state.buildQueue[0];
-  // Workshop bonus: each workshop adds +1 effective builder
+  // Workshop bonus: each workshop adds +1 effective builder; base progress is always 1
   const workshopBonus=state.buildings['workshop']||0;
-  const progress=Math.min(builders+workshopBonus, active.seasonsLeft);
+  const progress=Math.min(Math.max(1,builders+workshopBonus), active.seasonsLeft);
   active.seasonsLeft=Math.max(1, active.seasonsLeft-progress);
   // If this tick would complete it (seasonsLeft reaches 1 and progress>=1), finish
-  if(active.seasonsLeft<=1&&builders>0){
+  if(active.seasonsLeft<=1){
     active.seasonsLeft=0;
     state.buildQueue.shift();
     state.buildings[active.defId]=(state.buildings[active.defId]||0)+1;
@@ -2753,9 +2752,7 @@ function renderBuildings(){
     const activeDef=BUILDINGS_DEF.find(b=>b.id===active.defId);
     const progress=active.totalSeasons-active.seasonsLeft;
     const pct=Math.round((progress/active.totalSeasons)*100);
-    const seasonsLabel=builders===0
-      ?`<span style="color:var(--red)">Paused — no builders assigned</span>`
-      :`${active.seasonsLeft} season${active.seasonsLeft!==1?'s':''} remaining`;
+    const seasonsLabel=`${active.seasonsLeft} season${active.seasonsLeft!==1?'s':''} remaining`;
     const queuedItems=state.buildQueue.slice(1).map((q,i)=>{
       const d=BUILDINGS_DEF.find(b=>b.id===q.defId);
       return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:0.85rem">
@@ -2781,7 +2778,7 @@ function renderBuildings(){
       </div>`;
   } else {
     queueHTML=`<div style="background:var(--bg2);border:1px solid var(--border);padding:14px;margin-bottom:18px;font-style:italic;color:var(--text-dim);font-size:0.88rem;text-align:center">
-      No active construction. Queue a building below.${builders===0?'<br><span style="color:var(--red);font-size:0.8rem">⚠ Assign at least one Builder to begin work.</span>':''}
+      No active construction. Queue a building below.
     </div>`;
   }
 
@@ -2797,10 +2794,8 @@ function renderBuildings(){
     const atMax=total>=def.maxCount;
     const locked=def.tier===3&&state.buildings['schoolhouse']<1;
     const buildTime=BUILD_SEASONS[def.id];
-    const effectiveBuildTime=effectiveBuilders>0?Math.max(1,buildTime-effectiveBuilders):buildTime;
-    const timeLabel=effectiveBuilders>0
-      ?`${effectiveBuildTime} season${effectiveBuildTime!==1?'s':''} to build`
-      :`${buildTime}s baseline (no builders)`;
+    const effectiveBuildTime=Math.max(1,buildTime-effectiveBuilders);
+    const timeLabel=`${effectiveBuildTime} season${effectiveBuildTime!==1?'s':''} to build`;
     const maxLabel=def.maxCount>=99?'∞':def.id==='cabin'?'∞':`${built}/${def.maxCount}`;
     byTier[def.tier].push(`<div class="building-card ${locked?'locked':''}">
       <div class="b-count">${maxLabel}${inQueue>0?`<span style="font-size:0.65rem;color:var(--gold)"> +${inQueue}🔨</span>`:''}</div>
