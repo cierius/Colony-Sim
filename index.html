@@ -44,8 +44,8 @@
   .header-year{font-family:var(--font-heading),serif;font-size:1.1rem;color:var(--gold);letter-spacing:0.04em;}
   .header-season{font-size:0.82rem;color:var(--text-dim);font-style:italic;margin-left:10px;}
 
-  #map-panel{position:fixed;top:var(--header-h);left:0;right:0;height:var(--map-h);background:var(--bg);border-bottom:2px solid var(--border);overflow:hidden;z-index:40;display:flex;align-items:center;justify-content:center;}
-  #map-canvas{display:block;image-rendering:pixelated;}
+  #map-panel{position:fixed;top:var(--header-h);left:0;right:0;height:var(--map-h);background:#0e0a0e;border-bottom:2px solid var(--border);overflow:hidden;z-index:40;}
+  #map-canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
   #tabs{position:fixed;top:calc(var(--header-h) + var(--map-h));left:0;right:0;height:var(--tabs-h);background:var(--bg2);border-bottom:1px solid var(--border);display:flex;z-index:50;}
   .tab{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;font-family:var(--font-heading),serif;font-size:0.88rem;color:var(--text-dim);letter-spacing:0.04em;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;position:relative;user-select:none;}
   .tab:hover{color:var(--text);background:rgba(200,151,42,0.04);}
@@ -2617,74 +2617,127 @@ function initTabSwipe(){
 // RENDER
 // ═══════════════════════════════════════
 // ═══════════════════════════════════════
-// ASCII MAP
+// SPRITE MAP
 // ═══════════════════════════════════════
-const MAP_COLS=60,MAP_ROWS=18;
-let _mapTerrain=null,_mapRAF=null;
+const MAP_W=50,MAP_H=30,TILE=32; // world size in tiles
+const T_GRASS=0,T_FOREST=1,T_TREES=2,T_MOUNTAIN=3,T_RIVER=4,T_HILLS=5,T_SHORE=6,T_DESERT=7,T_OCEAN=8,T_DIRT=9;
+const SP_FARMER=0,SP_HUNTER=1,SP_WOODCUT=2,SP_BUILDER=3,SP_CARETAKER=4,SP_MYSTIC=5;
+const SP_CABIN=6,SP_FARM=7,SP_STORE=8,SP_WORKSHOP=9,SP_INFIRMARY=10,SP_SCHOOL=11,SP_GRANARY=12,SP_TAVERN=13,SP_MONUMENT=14,SP_SCAFFOLD=15;
 
-function _seededRng(seed){
-  let s=seed>>>0;
-  return function(){s^=s<<13;s^=s>>>17;s^=s<<5;return(s>>>0)/0xffffffff;};
-}
+const _TERRAIN_IMG=new Image(),_SPRITES_IMG=new Image();
+_TERRAIN_IMG.src='data:image/png;base64,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';
+_SPRITES_IMG.src='data:image/png;base64,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';
+let _assetsReady=0;
+_TERRAIN_IMG.onload=_SPRITES_IMG.onload=()=>_assetsReady++;
 
-function _buildMapTerrain(){
-  const r=_seededRng(0x7a3f1c9d);
-  const g=Array.from({length:MAP_ROWS},()=>Array(MAP_COLS).fill('.'));
-  // Base ground
-  for(let row=0;row<MAP_ROWS;row++)for(let col=0;col<MAP_COLS;col++) g[row][col]=r()<0.35?',':'.';
-  // Left forest (hunter/woodcutter zone)
-  for(let row=0;row<MAP_ROWS;row++){
-    const depth=11-row*0.45+Math.sin(row*1.1)*2.2;
-    for(let col=0;col<MAP_COLS;col++) if(col<depth) g[row][col]=r()<0.72?'♣':'.';
+let _mapWorld=null,_mapRAF=null;
+let _camX=0,_camY=0; // camera offset in pixels
+let _dragStart=null,_dragCam=null;
+
+function _seededRng(seed){let s=seed>>>0;return function(){s^=s<<13;s^=s>>>17;s^=s<<5;return(s>>>0)/0xffffffff;};}
+
+function _buildMapWorld(){
+  const rng=_seededRng(0x7a3f1c9d);
+  const g=Array.from({length:MAP_H},()=>Array(MAP_W).fill(T_GRASS));
+  // Base: grass with some dirt variation
+  for(let r=0;r<MAP_H;r++)for(let c=0;c<MAP_W;c++) g[r][c]=rng()<0.12?T_DIRT:T_GRASS;
+  // Left forest zone (hunter/woodcutter) cols 0-11
+  for(let r=0;r<MAP_H;r++){
+    const depth=12-r*0.3+Math.sin(r*1.1)*2;
+    for(let c=0;c<MAP_W;c++) if(c<depth) g[r][c]=rng()<0.65?T_FOREST:T_TREES;
   }
+  // Top-left dense forest
+  for(let r=0;r<8;r++) for(let c=0;c<9;c++) if(rng()<0.8) g[r][c]=T_FOREST;
   // Top scattered trees
-  for(let col=8;col<MAP_COLS-12;col++){const d=1+Math.sin(col*0.55)*1.8;for(let row=0;row<d&&row<3;row++)if(r()<0.4)g[row][col]='♣';}
-  // Right forest (mystic hills)
-  for(let row=0;row<MAP_ROWS-5;row++){const start=MAP_COLS-9+Math.sin(row*0.9)*2.5;for(let col=Math.floor(start);col<MAP_COLS;col++)g[row][col]=r()<0.62?'♣':'.';}
-  // Farm zone floor (bottom center)
-  for(let row=13;row<MAP_ROWS;row++)for(let col=14;col<46;col++)g[row][col]=r()<0.35?',':'.';
-  // Stream
-  for(let col=28;col<38;col++){g[9][col]='~';if(r()<0.55)g[10][col]='~';}
-  g[9][27]='~';g[9][38]='~';
+  for(let c=8;c<MAP_W-10;c++){const d=1+Math.sin(c*0.55)*1.5;for(let r=0;r<d&&r<3;r++)if(rng()<0.45)g[r][c]=T_TREES;}
+  // Right hills/forest (mystic zone) cols 40-49
+  for(let r=0;r<MAP_H-5;r++){const start=41+Math.sin(r*0.9)*2;for(let c=Math.floor(start);c<MAP_W;c++)g[r][c]=rng()<0.55?T_HILLS:T_TREES;}
+  // Top-right mountains
+  for(let r=0;r<7;r++) for(let c=43;c<MAP_W;c++) if(rng()<0.7+r*0.05) g[r][c]=T_MOUNTAIN;
+  // River: horizontal band row 13-14, cols 17-33
+  for(let c=17;c<34;c++){g[13][c]=T_RIVER;if(rng()<0.6)g[14][c]=T_RIVER;}
+  g[13][16]=T_RIVER;g[13][34]=T_RIVER;
+  // Shore tiles around river edges
+  for(let c=15;c<36;c++) if(g[12][c]===T_GRASS) g[12][c]=rng()<0.4?T_SHORE:T_GRASS;
+  // Farm zone floor (bottom center) rows 22-29, cols 13-40 — keep as grass, overlay at render
+  for(let r=22;r<MAP_H;r++) for(let c=13;c<41;c++) g[r][c]=rng()<0.2?T_DIRT:T_GRASS;
   return g;
 }
 
-const _BLDG_MAP={
-  cabin:      {positions:[[8,16],[8,20],[8,24],[6,18],[6,22],[10,18],[10,22],[7,26],[9,26]], sym:'⌂', color:'#c87840'},
-  storehouse: {positions:[[6,30]], sym:'S', color:'#c87840'},
-  workshop:   {positions:[[6,34]], sym:'W', color:'#c87840'},
-  infirmary:  {positions:[[10,30]], sym:'+', color:'#c05080'},
-  schoolhouse:{positions:[[10,34]], sym:'E', color:'#c87840'},
-  granary:    {positions:[[8,38]], sym:'G', color:'#c87840'},
-  tavern:     {positions:[[5,28]], sym:'T', color:'#c87840'},
-  monument:   {positions:[[4,24]], sym:'♦', color:'#e09858'},
+// Building tile positions [row, col] — settlement zone center ~cols 18-38, rows 8-21
+const _BLDG_TILES={
+  cabin:      {positions:[[10,18],[10,22],[10,26],[8,20],[8,24],[12,20],[12,24],[13,28],[11,30]], sp:SP_CABIN},
+  storehouse: {positions:[[11,33]], sp:SP_STORE},
+  workshop:   {positions:[[11,37]], sp:SP_WORKSHOP},
+  infirmary:  {positions:[[14,33]], sp:SP_INFIRMARY},
+  schoolhouse:{positions:[[14,37]], sp:SP_SCHOOL},
+  granary:    {positions:[[12,41]], sp:SP_GRANARY},
+  tavern:     {positions:[[8,28]],  sp:SP_TAVERN},
+  monument:   {positions:[[6,22]],  sp:SP_MONUMENT},
 };
 const _ROLE_ZONES={
-  Farmer:    {r1:13,r2:17,c1:14,c2:44},
-  Hunter:    {r1:1, r2:11,c1:0, c2:11},
-  Woodcutter:{r1:0, r2:8, c1:0, c2:9},
-  Builder:   {r1:6, r2:12,c1:15,c2:38},
-  Caretaker: {r1:7, r2:12,c1:16,c2:35},
-  Mystic:    {r1:2, r2:10,c1:50,c2:59},
+  Farmer:    {r1:22,r2:29,c1:13,c2:40},
+  Hunter:    {r1:1, r2:15,c1:0, c2:11},
+  Woodcutter:{r1:0, r2:10,c1:0, c2:9},
+  Builder:   {r1:8, r2:18,c1:16,c2:38},
+  Caretaker: {r1:9, r2:17,c1:17,c2:35},
+  Mystic:    {r1:2, r2:14,c1:40,c2:49},
 };
-const _ROLE_SYMS={Farmer:'f',Hunter:'h',Woodcutter:'w',Builder:'b',Caretaker:'c',Mystic:'m'};
-const _ROLE_COLORS={Farmer:'#508860',Hunter:'#c08030',Woodcutter:'#8a6a40',Builder:'#c87840',Caretaker:'#c05080',Mystic:'#9060c0'};
-const _TERRAIN_COLORS={'♣':'#3a6030','~':'#305880','≈':'#508860',',':'#3a4028','.':'#2a3020'};
+const _ROLE_SP={Farmer:SP_FARMER,Hunter:SP_HUNTER,Woodcutter:SP_WOODCUT,Builder:SP_BUILDER,Caretaker:SP_CARETAKER,Mystic:SP_MYSTIC};
 
 function _getColonistPos(col,now){
   const z=_ROLE_ZONES[col.role]||_ROLE_ZONES.Caretaker;
   const seed=(col.id||0)%100;
-  const t=now*0.00018+seed*2.7;
+  const t=now*0.00015+seed*2.7;
   const cx=(z.c1+z.c2)/2,cy=(z.r1+z.r2)/2;
   const rx=(z.c2-z.c1)/2*0.75,ry=(z.r2-z.r1)/2*0.75;
   return{
     r:Math.max(z.r1,Math.min(z.r2,Math.round(cy+ry*Math.sin(t*1.3+seed)))),
-    c:Math.max(z.c1,Math.min(z.c2,Math.round(cx+rx*Math.sin(t))),)
+    c:Math.max(z.c1,Math.min(z.c2,Math.round(cx+rx*Math.sin(t))))
   };
 }
 
+function _drawTile(ctx,img,spriteIdx,dx,dy){
+  ctx.drawImage(img,spriteIdx*TILE,0,TILE,TILE,dx,dy,TILE,TILE);
+}
+
+function _clampCam(panel){
+  const pw=panel.clientWidth,ph=panel.clientHeight;
+  _camX=Math.max(0,Math.min(MAP_W*TILE-pw,_camX));
+  _camY=Math.max(0,Math.min(MAP_H*TILE-ph,_camY));
+}
+
+function initMapEvents(){
+  const canvas=document.getElementById('map-canvas');
+  if(!canvas||canvas._eventsInited)return;
+  canvas._eventsInited=true;
+  const onDown=e=>{
+    _dragStart={x:e.clientX||e.touches[0].clientX,y:e.clientY||e.touches[0].clientY};
+    _dragCam={x:_camX,y:_camY};
+    canvas.style.cursor='grabbing';
+  };
+  const onMove=e=>{
+    if(!_dragStart)return;
+    const cx=e.clientX||(e.touches&&e.touches[0].clientX)||0;
+    const cy=e.clientY||(e.touches&&e.touches[0].clientY)||0;
+    _camX=_dragCam.x-( cx-_dragStart.x);
+    _camY=_dragCam.y-(cy-_dragStart.y);
+    _clampCam(canvas.parentElement);
+  };
+  const onUp=()=>{_dragStart=null;canvas.style.cursor='grab';};
+  canvas.addEventListener('mousedown',onDown);
+  canvas.addEventListener('mousemove',onMove);
+  canvas.addEventListener('mouseup',onUp);
+  canvas.addEventListener('mouseleave',onUp);
+  canvas.addEventListener('touchstart',e=>{e.preventDefault();onDown(e);},{passive:false});
+  canvas.addEventListener('touchmove',e=>{e.preventDefault();onMove(e);},{passive:false});
+  canvas.addEventListener('touchend',onUp);
+  canvas.style.cursor='grab';
+}
+
 function renderMap(){
-  if(!_mapTerrain)_mapTerrain=_buildMapTerrain();
+  if(!_mapWorld)_mapWorld=_buildMapWorld();
+  if(_assetsReady<2)return;
   const canvas=document.getElementById('map-canvas');
   const panel=document.getElementById('map-panel');
   if(!canvas||!panel)return;
@@ -2692,59 +2745,88 @@ function renderMap(){
   if(W<10||H<10)return;
   if(canvas.width!==W)canvas.width=W;
   if(canvas.height!==H)canvas.height=H;
+  initMapEvents();
+  _clampCam(panel);
   const ctx=canvas.getContext('2d');
+  ctx.imageSmoothingEnabled=false;
   ctx.clearRect(0,0,W,H);
-  const cellW=W/MAP_COLS,cellH=H/MAP_ROWS;
-  const fs=Math.max(8,Math.floor(Math.min(cellW/0.62,cellH*0.82)));
+  // Visible tile range
+  const c0=Math.floor(_camX/TILE),r0=Math.floor(_camY/TILE);
+  const c1=Math.min(MAP_W,c0+Math.ceil(W/TILE)+1);
+  const r1=Math.min(MAP_H,r0+Math.ceil(H/TILE)+1);
+  const offX=-(_camX%TILE),offY=-(_camY%TILE);
   const S=state;
-  // Overlay map: key = r*1000+c
-  const ov={};
-  // Farm crops
+  // Build overlay: which tiles have buildings/colonists
+  const ov={}; // key=r*1000+c -> {sp,layer} layer 1=building 2=colonist
+  // Farm fields overlay
   const fc=(S.buildings&&S.buildings.farm)||0;
-  if(fc>0){const fw=Math.min(2+fc*4,30);for(let row=13;row<MAP_ROWS;row++)for(let col=14;col<14+fw&&col<45;col++)ov[row*1000+col]={ch:(row+col)%2===0?'≈':',',color:'#508860',bold:false};}
+  if(fc>0){
+    const fw=Math.min(3+fc*3,28);
+    for(let r=22;r<MAP_H;r++) for(let c=13;c<13+fw&&c<41;c++) ov[r*1000+c]={sp:SP_FARM,layer:1};
+  }
   // Buildings
-  for(const[id,def]of Object.entries(_BLDG_MAP)){const cnt=(S.buildings&&S.buildings[id])||0;if(!cnt)continue;for(let i=0;i<Math.min(cnt,def.positions.length);i++){const[r,c]=def.positions[i];ov[r*1000+c]={ch:def.sym,color:def.color,bold:true};}}
-  // Construction sites
-  for(const item of(S.buildQueue||[])){const def=_BLDG_MAP[item.id];if(!def||!def.positions)continue;const ec=(S.buildings&&S.buildings[item.id])||0;const pos=def.positions[ec];if(pos){const[r,c]=pos;ov[r*1000+c]={ch:'▒',color:'#c08030',bold:false};}}
+  for(const[id,def]of Object.entries(_BLDG_TILES)){
+    const cnt=(S.buildings&&S.buildings[id])||0;
+    if(!cnt)continue;
+    for(let i=0;i<Math.min(cnt,def.positions.length);i++){
+      const[r,c]=def.positions[i]; ov[r*1000+c]={sp:def.sp,layer:1};
+    }
+  }
+  // Construction scaffolding
+  for(const item of(S.buildQueue||[])){
+    const def=_BLDG_TILES[item.id];
+    if(!def)continue;
+    const ec=(S.buildings&&S.buildings[item.id])||0;
+    const pos=def.positions[ec];
+    if(pos){const[r,c]=pos; ov[r*1000+c]={sp:SP_SCAFFOLD,layer:1};}
+  }
   // Colonists
   const now=performance.now(),taken=new Set();
   for(const col of(S.colonists||[])){
     if(col.health<=0)continue;
     let p=_getColonistPos(col,now),k=p.r*1000+p.c;
-    if(taken.has(k)){p.c=Math.min(MAP_COLS-1,p.c+1);k=p.r*1000+p.c;}
-    if(taken.has(k)){p.c=Math.min(MAP_COLS-1,p.c+1);k=p.r*1000+p.c;}
+    if(taken.has(k)){p.c=Math.min(MAP_W-1,p.c+1);k=p.r*1000+p.c;}
+    if(taken.has(k)){p.c=Math.min(MAP_W-1,p.c+1);k=p.r*1000+p.c;}
     taken.add(k);
-    ov[k]={ch:_ROLE_SYMS[col.role]||'@',color:_ROLE_COLORS[col.role]||'#fff',bold:true};
+    ov[k]={sp:_ROLE_SP[col.role]??SP_FARMER,layer:2};
   }
-  // Render pass 1: terrain (normal)
-  ctx.font=`${fs}px "Courier New",monospace`;
-  ctx.textAlign='center';ctx.textBaseline='middle';
-  const midX=cellW*0.5,midY=cellH*0.5;
-  for(let row=0;row<MAP_ROWS;row++){
-    for(let col=0;col<MAP_COLS;col++){
-      const key=row*1000+col;
-      if(ov[key]&&ov[key].bold)continue;
-      const o=ov[key];
-      const ch=o?o.ch:_mapTerrain[row][col];
-      ctx.fillStyle=o?o.color:(_TERRAIN_COLORS[ch]||'#2a3020');
-      ctx.fillText(ch,col*cellW+midX,row*cellH+midY);
+  // Draw terrain
+  for(let r=r0;r<r1;r++){
+    for(let c=c0;c<c1;c++){
+      const dx=offX+(c-c0)*TILE,dy=offY+(r-r0)*TILE;
+      const key=r*1000+c;
+      const terrain=_mapWorld[r][c];
+      _drawTile(ctx,_TERRAIN_IMG,terrain,dx,dy);
+      // Draw overlay (building or farm) on top of terrain
+      if(ov[key]&&ov[key].layer===1){
+        _drawTile(ctx,_SPRITES_IMG,ov[key].sp,dx,dy);
+      }
     }
   }
-  // Render pass 2: bold overlays (buildings + colonists)
-  ctx.font=`bold ${fs}px "Courier New",monospace`;
+  // Draw colonists on top (separate pass so they're always on top)
   for(const[key,o]of Object.entries(ov)){
-    if(!o.bold)continue;
-    const k=parseInt(key),row=Math.floor(k/1000),col=k%1000;
-    ctx.fillStyle=o.color;
-    ctx.fillText(o.ch,col*cellW+midX,row*cellH+midY);
+    if(o.layer!==2)continue;
+    const k=parseInt(key),r=Math.floor(k/1000),c=k%1000;
+    if(r<r0||r>=r1||c<c0||c>=c1)continue;
+    const dx=offX+(c-c0)*TILE,dy=offY+(r-r0)*TILE;
+    _drawTile(ctx,_SPRITES_IMG,o.sp,dx,dy);
   }
+  // Subtle vignette / border hint so user knows map is scrollable
+  const g=ctx.createLinearGradient(0,0,W,0);
+  g.addColorStop(0,'rgba(14,10,14,0.35)');g.addColorStop(0.06,'transparent');
+  g.addColorStop(0.94,'transparent');g.addColorStop(1,'rgba(14,10,14,0.35)');
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  const g2=ctx.createLinearGradient(0,0,0,H);
+  g2.addColorStop(0,'rgba(14,10,14,0.25)');g2.addColorStop(0.04,'transparent');
+  g2.addColorStop(0.96,'transparent');g2.addColorStop(1,'rgba(14,10,14,0.25)');
+  ctx.fillStyle=g2;ctx.fillRect(0,0,W,H);
 }
 
 function startMapLoop(){
   if(_mapRAF)return;
   let lastT=0;
   function frame(t){
-    if(t-lastT>80){lastT=t;renderMap();}// ~12fps cap
+    if(t-lastT>60){lastT=t;renderMap();}
     _mapRAF=requestAnimationFrame(frame);
   }
   _mapRAF=requestAnimationFrame(frame);
