@@ -19,7 +19,7 @@
 </style>
 <style>
   :root{
-    --header-h:40px;--tabs-h:44px;--footer-h:116px;
+    --header-h:40px;--tabs-h:44px;--footer-h:138px;
   }
   /* ── Theme-driven radius + border-width ── */
   .colonist-card,.building-card,.ov-panel,.toast,
@@ -58,9 +58,16 @@
   @keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
 
   #footer{position:fixed;bottom:0;left:0;right:0;height:var(--footer-h);background:var(--bg2);border-top:1px solid var(--border);display:flex;flex-direction:column;z-index:50;}
-  #res-row{display:grid;grid-template-columns:repeat(5,1fr);flex:1;}
+  #res-row{display:grid;grid-template-columns:repeat(3,1fr) 1fr;flex:1;}
   .res-cell{display:flex;flex-direction:column;justify-content:center;padding:0 14px;border-right:1px solid var(--border);}
-  .res-cell:last-child{border-right:none;}
+  .res-half-pair{display:flex;border-right:none;}
+  .res-cell-half{display:flex;flex-direction:column;justify-content:center;padding:0 10px;border-right:1px solid var(--border);flex:1;}
+  .res-cell-half:last-child{border-right:none;}
+  .res-cell-half .res-label{font-size:0.62rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-dim);}
+  .res-cell-half .res-value{font-family:var(--font-heading),serif;font-size:1.05rem;color:var(--text-bright);line-height:1.1;}
+  #role-bar{height:22px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:center;gap:20px;padding:0 14px;background:var(--bg);flex-shrink:0;}
+  .role-chip{display:flex;align-items:center;gap:3px;font-size:0.68rem;color:var(--text-dim);}
+  .role-chip-count{font-family:var(--font-heading),serif;color:var(--text-bright);font-size:0.72rem;}
   .res-label{font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim);}
   .res-value{font-family:var(--font-heading),serif;font-size:1.25rem;color:var(--text-bright);line-height:1.1;}
   .res-rates{display:flex;gap:6px;font-size:0.7rem;font-style:italic;}
@@ -590,8 +597,10 @@
     <div class="res-cell"><div class="res-label">Food</div><div class="res-value" id="rv-food">—</div><div class="res-rates" id="rr-food"></div></div>
     <div class="res-cell"><div class="res-label">Materials</div><div class="res-value" id="rv-materials">—</div><div class="res-rates" id="rr-materials"></div></div>
     <div class="res-cell"><div class="res-label">Knowledge</div><div class="res-value" id="rv-knowledge">—</div><div class="res-rates" id="rr-knowledge"></div></div>
-    <div class="res-cell"><div class="res-label">Population</div><div class="res-value" id="rv-population">—</div><div class="res-rates" id="rr-population"></div></div>
-    <div class="res-cell"><div class="res-label">Morale</div><div class="res-value" id="rv-morale">—</div><div class="res-rates" id="rr-morale"></div></div>
+    <div class="res-half-pair">
+      <div class="res-cell-half"><div class="res-label">Population</div><div class="res-value" id="rv-population">—</div></div>
+      <div class="res-cell-half"><div class="res-label">Morale</div><div class="res-value" id="rv-morale">—</div></div>
+    </div>
   </div>
   <div id="time-bar">
     <div class="speed-controls">
@@ -609,6 +618,7 @@
     </div>
     <span class="tb-label right" id="tb-year">Year 1</span>
   </div>
+  <div id="role-bar"></div>
 </div>
 
 <script>
@@ -2641,8 +2651,16 @@ function renderFooter(){
   }
   setR('materials',r.materials,rt.matIn,0,'');
   setR('knowledge',r.knowledge,rt.knowIn,0,'');
-  setR('population',state.colonists.length,null,null,'');
-  setR('morale',Math.round(r.morale)+'%',null,null,'');
+  document.getElementById('rv-population').textContent=state.colonists.length;
+  document.getElementById('rv-morale').textContent=Math.round(r.morale)+'%';
+  // Role bar
+  const roleBar=document.getElementById('role-bar');
+  if(roleBar){
+    roleBar.innerHTML=ROLES.map(role=>{
+      const count=state.colonists.filter(c=>c.role===role).length;
+      return `<span class="role-chip"><span>${ROLE_EMOJI[role]}</span><span class="role-chip-count">${count}</span></span>`;
+    }).join('');
+  }
 }
 
 function renderTimeBar(){
