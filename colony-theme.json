@@ -1,0 +1,55 @@
+{
+  "_comment": "Hearthbound UI theme — all keys optional, missing ones fall back to defaults.",
+  "fonts": {
+    "heading": "Playfair Display",
+    "body": "Crimson Text",
+    "headingFallback": "Georgia, serif",
+    "bodyFallback": "Georgia, serif",
+    "googleFontsUrl": "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap"
+  },
+  "colors": {
+    "bg": "#0e0a0e",
+    "bg2": "#160e18",
+    "bg3": "#1e1422",
+    "border": "#2e2030",
+    "borderLight": "#483248",
+    "gold": "#c87840",
+    "goldLight": "#e09858",
+    "goldDim": "#704020",
+    "text": "#d4b8cc",
+    "textDim": "#806070",
+    "textBright": "#ecd4e0",
+    "red": "#c03858",
+    "green": "#508860"
+  },
+  "seasons": {
+    "names": ["Sowing", "Ripening", "Reaping", "Mourning"],
+    "colors": ["#508860", "#c87840", "#a05038", "#604878"]
+  },
+  "speed": {
+    "normal": 3500,
+    "fast": 2200
+  },
+  "strings": {
+    "gameTitle": "Hearthbound",
+    "resourceLabels": {
+      "food": "Food",
+      "materials": "Materials",
+      "knowledge": "Knowledge",
+      "population": "Population",
+      "morale": "Morale"
+    }
+  },
+  "tabs": [
+    { "id": "colonists",  "label": "Colonists",  "emoji": "&#128101;" },
+    { "id": "structures", "label": "Structures", "emoji": "&#9874;"   },
+    { "id": "research",   "label": "Research",   "emoji": "&#128220;" },
+    { "id": "overview",   "label": "Overview",   "emoji": "&#128202;" }
+  ],
+  "style": {
+    "radius": 12,
+    "borderWidth": 2,
+    "spacing": 1,
+    "fontSize": 18
+  }
+}
